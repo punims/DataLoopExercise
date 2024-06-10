@@ -70,6 +70,8 @@ async def resume_game():
     if not game_state["paused"]:
         raise HTTPException(status_code=400, detail="Game is not paused.")
     game_state["paused"] = False
+    if game_state["awaiting_ping"] == False:
+        asyncio.create_task(send_ping()) #TODO might be some synchronization issue. What if pause happens between sending and receiving a ping?
     return {"message": "Game resumed"}
 
 @app.post("/stop")
