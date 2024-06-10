@@ -52,6 +52,8 @@ async def receive_ping():
     print("RECEIVED PING")
     if game_state["paused"]:
         return {"message": "Game is paused"}
+    if not game_state["is_active"]:
+        return {"message": ""}
     game_state["awaiting_ping"] = False
     asyncio.create_task(send_ping())
     return {"message": "pong"}
