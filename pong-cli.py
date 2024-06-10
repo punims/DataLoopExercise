@@ -30,12 +30,15 @@ def main():
             send_request(args.server_url_1, 'start', {'self_url': args.server_url_1, 'other_server_url': args.server_url_2, 'pong_time_ms': args.pong_time_ms})
     elif args.command == 'stop':
         send_request(args.server_url_1, 'stop')
+        send_request(args.server_url_2, 'stop')
 
     elif args.command == 'pause':
         send_request(args.server_url_1, 'pause')
+        send_request(args.server_url_2, 'pause')
 
     elif args.command == 'resume':
         send_request(args.server_url_1, 'resume')
+        send_request(args.server_url_2, 'resume')
 
 
 if __name__ == "__main__":

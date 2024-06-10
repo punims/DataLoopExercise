@@ -15,7 +15,8 @@ game_state = {
     "other_server_url": "",
     "pong_time_ms": 1000,
     "is_active": False,
-    "paused": False
+    "paused": False,
+    "awaiting_ping": False
 }
 
 @app.post("/start")
@@ -24,27 +25,34 @@ async def start_game(game_details: StartGame):
     return {"message": "Game started"}
 
 async def send_ping():
-    while game_state["is_active"] and not game_state["paused"]:
-        await asyncio.sleep(game_state["pong_time_ms"] / 1000)
-        target_url = game_state["other_server_url"]
-        print(target_url)
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(target_url + "/ping")
-                if response.status_code == 200 and response.json().get('message') == 'pong':
-                    print(f"Ping sent to {target_url} and pong received.")
-                else:
-                    print("Did not receive proper pong response, stopping ping process.")
-                    break  # Break the loop if response is not as expected
-                print("Ping sent and pong received.")
-        except Exception as e:
-            print(f"Error sending ping: {e}")
+
+    while game_state["paused"] or game_state["awaiting_ping"]:
+        await asyncio.sleep(1)  # Sleep briefly to reduce CPU usage while paused
+        continue  # Continue the loop but skip sending pings
+    await asyncio.sleep(game_state["pong_time_ms"] / 1000)
+    target_url = game_state["other_server_url"]
+    print(target_url)
+    try:
+        async with httpx.AsyncClient() as client:
+
+            response = await client.post(target_url + "/ping")
+
+            if response.status_code == 200 and response.json().get('message') == 'pong':
+                print(f"Ping sent to {target_url} and pong received.")
+                game_state["awaiting_ping"] = True
+            else:
+                print("Did not receive proper pong response, stopping ping process.")
+                return  # Break the loop if response is not as expected
+            print("Ping sent and pong received.")
+    except Exception as e:
+        print(f"Error sending ping: {e}")
 
 @app.post("/ping")
 async def receive_ping():
     print("RECEIVED PING")
     if game_state["paused"]:
         return {"message": "Game is paused"}
+    game_state["awaiting_ping"] = False
     asyncio.create_task(send_ping())
     return {"message": "pong"}
 
@@ -62,7 +70,6 @@ async def resume_game():
     if not game_state["paused"]:
         raise HTTPException(status_code=400, detail="Game is not paused.")
     game_state["paused"] = False
-    asyncio.create_task(send_ping())
     return {"message": "Game resumed"}
 
 @app.post("/stop")
