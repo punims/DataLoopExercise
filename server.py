@@ -17,9 +17,11 @@ game_state = {
 
 @app.post("/start")
 async def start_game(game_details: StartGame):
-    game_state["other_server_vol"] = game_details.other_server_url
+    game_state["other_server_url"] = game_details.other_server_url
     game_state["pong_time_ms"] = game_details.pong_time_ms
     game_state["is_active"] = True
+    print(f"Game started with other server: {game_state['other_server_url']}")
+    print("Received game details:", game_details.dict())
     asyncio.create_task(ping_pong_cycle())
     return {"message": "Game started"}
 
