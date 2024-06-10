@@ -20,15 +20,6 @@ game_state = {
 
 @app.post("/start")
 async def start_game(game_details: StartGame):
-    if game_state["is_active"]:
-        raise HTTPException(status_code=400, detail="Game is already active.")
-    game_state.update({
-        "self_url": game_details.self_url,
-        "other_server_url": game_details.other_server_url,
-        "pong_time_ms": game_details.pong_time_ms,
-        "is_active": True,
-        "paused": False
-    })
     asyncio.create_task(send_ping())
     return {"message": "Game started"}
 
@@ -40,6 +31,11 @@ async def send_ping():
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(target_url + "/ping")
+                if response.status_code == 200 and response.json().get('message') == 'pong':
+                    print(f"Ping sent to {target_url} and pong received.")
+                else:
+                    print("Did not receive proper pong response, stopping ping process.")
+                    break  # Break the loop if response is not as expected
                 print("Ping sent and pong received.")
         except Exception as e:
             print(f"Error sending ping: {e}")
@@ -49,7 +45,6 @@ async def receive_ping():
     print("RECEIVED PING")
     if game_state["paused"]:
         return {"message": "Game is paused"}
-    game_state['self_url'], game_state['other_server_url'] = game_state['other_server_url'], game_state['self_url']
     asyncio.create_task(send_ping())
     return {"message": "pong"}
 
@@ -75,7 +70,7 @@ async def stop_game():
     game_state["is_active"] = False
     return {"message": "Game stopped"}
 
-@app.post("/startwait")
+@app.post("/initialize")
 async def start_wait_game(game_details: StartGame):
     if game_state["is_active"]:
         raise HTTPException(status_code=400, detail="Game is already active.")

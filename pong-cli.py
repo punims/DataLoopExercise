@@ -25,16 +25,17 @@ def main():
         if not args.server_url_2:
             print("You must provide --other_server_url for 'start'.")
         else:
+            send_request(args.server_url_1, 'initialize', {'self_url': args.server_url_1, 'other_server_url': args.server_url_2, 'pong_time_ms': args.pong_time_ms})
+            send_request(args.server_url_2, 'initialize', {'self_url': args.server_url_2, 'other_server_url': args.server_url_1, 'pong_time_ms': args.pong_time_ms})
             send_request(args.server_url_1, 'start', {'self_url': args.server_url_1, 'other_server_url': args.server_url_2, 'pong_time_ms': args.pong_time_ms})
-            send_request(args.server_url_2, 'startwait', {'self_url': args.server_url_2, 'other_server_url': args.server_url_1, 'pong_time_ms': args.pong_time_ms})
     elif args.command == 'stop':
-        send_request(args.self_url, 'stop')
+        send_request(args.server_url_1, 'stop')
 
     elif args.command == 'pause':
-        send_request(args.self_url, 'pause')
+        send_request(args.server_url_1, 'pause')
 
     elif args.command == 'resume':
-        send_request(args.self_url, 'resume')
+        send_request(args.server_url_1, 'resume')
 
 
 if __name__ == "__main__":
