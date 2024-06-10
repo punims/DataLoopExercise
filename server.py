@@ -1,42 +1,70 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 import httpx
 import asyncio
+from pydantic import BaseModel
 
 app = FastAPI()
 
 class StartGame(BaseModel):
+    self_url: str
     other_server_url: str
     pong_time_ms: int
 
 game_state = {
+    "self_url": "",
     "other_server_url": "",
     "pong_time_ms": 1000,
-    "is_active": False
+    "is_active": False,
+    "paused": False
 }
 
 @app.post("/start")
 async def start_game(game_details: StartGame):
-    game_state["other_server_url"] = game_details.other_server_url
-    game_state["pong_time_ms"] = game_details.pong_time_ms
-    game_state["is_active"] = True
-    print(f"Game started with other server: {game_state['other_server_url']}")
-    print("Received game details:", game_details.dict())
-    asyncio.create_task(ping_pong_cycle())
+    if game_state["is_active"]:
+        raise HTTPException(status_code=400, detail="Game is already active.")
+    game_state.update({
+        "self_url": game_details.self_url,
+        "other_server_url": game_details.other_server_url,
+        "pong_time_ms": game_details.pong_time_ms,
+        "is_active": True,
+        "paused": False
+    })
+    asyncio.create_task(send_ping())
     return {"message": "Game started"}
 
-async def ping_pong_cycle():
-    while game_state["is_active"]:
-        await asyncio.sleep(game_state["pong_time_ms"] / 1000)  # Convert ms to seconds
+async def send_ping():
+    while game_state["is_active"] and not game_state["paused"]:
+        await asyncio.sleep(game_state["pong_time_ms"] / 1000)
+        target_url = game_state["other_server_url"]
         try:
             async with httpx.AsyncClient() as client:
-                await client.post(game_state["other_server_url"] + "/ping")
+                response = await client.post(target_url + "/ping")
+                print("Ping sent and pong received.")
         except Exception as e:
-            print(f"Failed to send ping: {e}")
+            print(f"Error sending ping: {e}")
 
 @app.post("/ping")
-async def ping_pong():
+async def receive_ping():
+    if game_state["paused"]:
+        return {"message": "Game is paused"}
     return {"message": "pong"}
+
+@app.post("/pause")
+async def pause_game():
+    if not game_state["is_active"]:
+        raise HTTPException(status_code=400, detail="Game is not active.")
+    game_state["paused"] = True
+    return {"message": "Game paused"}
+
+@app.post("/resume")
+async def resume_game():
+    if not game_state["is_active"]:
+        raise HTTPException(status_code=400, detail="Game is not active.")
+    if not game_state["paused"]:
+        raise HTTPException(status_code=400, detail="Game is not paused.")
+    game_state["paused"] = False
+    asyncio.create_task(send_ping())
+    return {"message": "Game resumed"}
 
 @app.post("/stop")
 async def stop_game():

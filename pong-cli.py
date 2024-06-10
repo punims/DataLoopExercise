@@ -14,8 +14,8 @@ def send_request(url, command, data=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Control the pong game servers.")
-    parser.add_argument('command', type=str, choices=['start', 'stop'], help="Command to execute (start or stop).")
-    parser.add_argument('url', type=str, help="URL of the server to control (e.g., 'localhost:8000').")
+    parser.add_argument('command', type=str, choices=['start', 'stop', 'pause', 'resume'], help="Command to execute (start or stop).")
+    parser.add_argument('self_url', type=str, help="URL of the server to control (e.g., 'localhost:8000').")
     parser.add_argument('--pong_time_ms', type=int, help="Time in milliseconds between pongs.", default=1000)
     parser.add_argument('--other_server_url', type=str, help="URL of the other server to ping (e.g., 'localhost:8001').")
 
@@ -27,9 +27,16 @@ def main():
         else:
             print(args.other_server_url)
             print("Sending data:", {'other_server_url': args.other_server_url, 'pong_time_ms': args.pong_time_ms})
-            send_request(args.url, 'start', {'other_server_url': args.other_server_url, 'pong_time_ms': args.pong_time_ms})
+            send_request(args.self_url, 'start', {'self_url': args.self_url, 'other_server_url': args.other_server_url, 'pong_time_ms': args.pong_time_ms})
     elif args.command == 'stop':
-        send_request(args.url, 'stop')
+        send_request(args.self_url, 'stop')
+
+    elif args.command == 'pause':
+        send_request(args.self_url, 'pause')
+
+    elif args.command == 'resume':
+        send_request(args.self_url, 'resume')
+
 
 if __name__ == "__main__":
     main()
